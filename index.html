@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>あんばい / ANBAI — 読む濃さは、あなたが決める。</title>
+<meta name="description" content="ぜんぶ読む／読まない、の間。ひとつのスライダーで、記事の濃さを 0.0〜1.0 に。tl;drでも全文でもなく、ちょうどいい塩梅で読む読み物。">
+<meta property="og:title" content="あんばい / ANBAI">
+<meta property="og:description" content="読む濃さは、あなたが決める。二値をやめる、というBoolean→Floatの読み物。">
+<meta name="theme-color" content="#0a0a0f">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%230a0a0f'/%3E%3Crect x='6' y='8' width='20' height='2.4' rx='1.2' fill='%237da58f'/%3E%3Crect x='6' y='14' width='14' height='2.4' rx='1.2' fill='%23b8b0a0'/%3E%3Crect x='6' y='20' width='17' height='2.4' rx='1.2' fill='%23d4a853'/%3E%3C/svg%3E">
+<style>
+  :root{
+    --void:#0a0a0f; --void-deep:#06060a; --surface:#15141a; --surface-hi:#1c1a23;
+    --gold:#d4a853; --gold-soft:rgba(212,168,83,.12); --gold-glow:rgba(212,168,83,.22); --gold-edge:rgba(212,168,83,.45);
+    --verd:#7da58f; --verd-soft:rgba(125,165,143,.14); --verd-edge:rgba(125,165,143,.4); /* B柱=緑青 */
+    --fg1:#e8e0d0; --fg2:#b8b0a0; --fg3:#807868; --dim:#5a5448;
+    --border:rgba(200,184,160,.07); --border-hi:rgba(212,168,83,.22);
+    --sans:-apple-system,BlinkMacSystemFont,"Hiragino Mincho ProN","Yu Mincho","Hiragino Sans","Yu Gothic",serif;
+    --mono:"SFMono-Regular",Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{background:radial-gradient(120% 80% at 50% 0%,#0c0d12 0%,var(--void) 45%,var(--void-deep) 100%);
+    color:var(--fg1); font-family:var(--sans); line-height:2.1; letter-spacing:.03em; -webkit-font-smoothing:antialiased;
+    min-height:100vh}
+  .wrap{max-width:680px; margin:0 auto; padding:clamp(22px,5vw,56px) clamp(18px,5vw,30px) 100px}
+
+  .kicker{font-family:var(--mono); font-size:12px; letter-spacing:.34em; color:var(--verd); text-align:center; margin-bottom:12px}
+  h1{font-size:clamp(30px,7vw,50px); font-weight:600; letter-spacing:.1em; text-align:center; margin:.1em 0 .1em;
+    text-shadow:0 0 26px var(--gold-glow)}
+  .romaji{text-align:center; font-family:var(--mono); color:var(--gold); letter-spacing:.4em; font-size:12px}
+  .lede{text-align:center; color:var(--fg2); font-size:15px; margin:18px auto 0; max-width:28em; line-height:1.9}
+
+  /* density control — sticky */
+  .panel{position:sticky; top:0; z-index:5; margin:26px 0 30px; padding:18px 18px 14px;
+    background:linear-gradient(180deg,rgba(21,20,26,.96),rgba(21,20,26,.88)); backdrop-filter:blur(8px);
+    border:1px solid var(--border); border-radius:16px; box-shadow:0 12px 40px rgba(0,0,0,.5)}
+  .panel-top{display:flex; justify-content:space-between; align-items:baseline; font-family:var(--mono); margin-bottom:6px}
+  .p-label{font-size:12px; letter-spacing:.2em; color:var(--verd)}
+  .p-val{font-size:22px; color:var(--gold); text-shadow:0 0 12px var(--gold-glow)}
+  .dial{width:100%; -webkit-appearance:none; appearance:none; height:5px; border-radius:99px; outline:none; cursor:pointer; margin:4px 0 8px;
+    background:linear-gradient(90deg,var(--verd-edge),var(--gold-edge))}
+  .dial::-webkit-slider-thumb{-webkit-appearance:none; width:24px; height:24px; border-radius:50%;
+    background:radial-gradient(circle at 35% 30%,#f0d89a,var(--gold) 70%); border:2px solid #1a1812;
+    box-shadow:0 0 0 5px var(--gold-soft),0 0 16px var(--gold-glow); cursor:grab}
+  .dial::-moz-range-thumb{width:24px;height:24px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#f0d89a,var(--gold) 70%);
+    border:2px solid #1a1812;box-shadow:0 0 0 5px var(--gold-soft),0 0 16px var(--gold-glow);cursor:grab}
+  .p-meta{display:flex; justify-content:space-between; font-family:var(--mono); font-size:11.5px; color:var(--fg3)}
+  .p-meta .tier{color:var(--verd)}
+  .scalerow{display:flex;justify-content:space-between;font-family:var(--mono);font-size:10px;color:var(--dim);margin-top:2px}
+
+  article{font-size:clamp(16px,2.6vw,18px)}
+  .s{transition:opacity .25s ease}
+  .s.hidden{display:none}
+  .s.show{opacity:1}
+  .s.fresh{opacity:.35}
+  article p{margin:0 0 1.25em}
+  .quiet{color:var(--fg3); font-size:13px; font-family:var(--mono); letter-spacing:.04em}
+
+  footer{margin-top:50px; border-top:1px solid var(--border); padding-top:26px; text-align:center; color:var(--fg3); font-size:13px; font-family:var(--sans)}
+  .pill{display:inline-block; font-family:var(--mono); font-size:11px; letter-spacing:.18em; color:var(--verd);
+    border:1px solid var(--verd-edge); border-radius:99px; padding:3px 12px; margin-bottom:12px}
+  footer .links{display:flex;flex-wrap:wrap;gap:8px 16px;justify-content:center;margin:14px 0}
+  footer a{color:var(--fg2); text-decoration:none; border-bottom:1px solid var(--border)}
+  footer a:hover{color:var(--gold)}
+  @media (prefers-reduced-motion: reduce){ .s{transition:none} }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="kicker">B O O K B U G &nbsp;·&nbsp; 読 み 物</div>
+  <div class="romaji">A N B A I</div>
+  <h1>あんばい</h1>
+  <div class="lede">ぜんぶ読む／読まない、の間。<br>つまみを回して、この記事の<b style="color:var(--gold)">濃さ</b>を、あなたのあんばいに。</div>
+
+  <div class="panel">
+    <div class="panel-top"><span class="p-label">濃 さ &nbsp;— どこまで読む</span><span class="p-val" id="pval">0.40</span></div>
+    <input class="dial" id="dial" type="range" min="0" max="1" step="0.01" value="0.4" aria-label="記事の濃さ 0から1">
+    <div class="scalerow"><span>ひとこと</span><span>あらすじ</span><span>全文</span></div>
+    <div class="p-meta"><span class="tier" id="tier">なぜ</span><span id="count">約 0 字 / 全 0 字</span></div>
+  </div>
+
+  <article id="art"></article>
+
+  <footer>
+    <div class="pill">この読み物じたいが Boolean→Float</div>
+    <div class="quiet">「読んだ／読んでない」の二択を、やめてみる。</div>
+    <div class="links">
+      <a href="https://osakenpiro.github.io/awai/">あわい</a>
+      <a href="https://osakenpiro.github.io/naoshikata/">なおしかた</a>
+      <a href="https://osakenpiro.github.io/">玄関</a>
+    </div>
+    <div style="color:var(--dim);font-size:11.5px;letter-spacing:.1em">あんばい / ANBAI · BookBug · #全人類UX改善計画 · Visionium</div>
+  </footer>
+</div>
+<script>
+"use strict";
+/* あんばい / ANBAI — 濃さ(Float)で読む可変深度リーダー
+   各文に depth d を与え、スライダー v 以下の文だけを見せる。v を上げるほど記事が連続して濃くなる。 */
+// [d, text] — d=その文が現れる濃さの閾値。低いほど常に見える(あらすじ)、高いほど深い時だけ。
+const SENT=[
+ [0.00,"世界はたいてい、はい か いいえ で聞いてくる。"],
+ [0.00,"でも、ほんとうのことは、たいてい、その間にある。"],
+ [0.16,"「Boolean→Float」は、その二択を——0か1を——連続値(0.0〜1.0)に作り直す、設計のかんがえだ。"],
+ [0.16,"スイッチを、つまみに変える。"],
+ [0.32,"なぜ、そんなことをするのか。"],
+ [0.32,"二値は、いちばん大事な「あいだ」を、いつも捨ててしまうからだ。"],
+ [0.32,"「だいたい賛成」も、「半分だけ打ち明ける」も、0か1に丸めた瞬間に、消えてしまう。"],
+ [0.48,"連続値なら、その途中を、途中のまま、持っていられる。"],
+ [0.48,"決めることと、決めきらないことを、その都度、使いわけられる。"],
+ [0.62,"たとえば『あわい』というゲームは、すべての選択をスライダーにした。0.5は「選ばない」ではなく、「両方が半分ずつ、起きる」。"],
+ [0.62,"『なおしかた』という図鑑は、ありふれたUI——ボタン、チェック、合否——を、片っ端から Float に直してみせる。"],
+ [0.62,"どれも、二択がこぼしていた手ざわりを、拾い直す試みだ。"],
+ [0.78,"もちろん、なんでも連続にすればいい、というわけではない。"],
+ [0.78,"信号は赤か青であるべきだし、送信ボタンは、押すか押さないかで、いい。"],
+ [0.78,"「あいだ」に意味がある時だけ、連続にする——その見極めこそが、設計と呼ばれるものだ。"],
+ [0.92,"この考えは、判断を曖昧にするための逃げではない。"],
+ [0.92,"むしろ逆で、これまで捨てていた情報を取り戻して、より正確に扱うための、技術だ。"],
+ [1.00,"0.0でも1.0でもない場所に、ちゃんと立っていられること。"],
+ [1.00,"それは見た目より、ずっと難しい。そして——たぶん、いちばん人間的な、ふるまいだ。"]
+];
+const f2=v=>v.toFixed(2);
+const tierOf=v=> v<0.1?"ひとこと": v<0.3?"あらすじ": v<0.5?"なぜ": v<0.7?"例つき": v<0.9?"ぜんぶ近く":"全文";
+const TOTAL=SENT.reduce((a,s)=>a+s[1].length,0);
+
+const art=document.getElementById("art");
+// 段落わけ: d=0.62群(例)と d>=0.92群(結)を別段落に。簡易に閾値で段落区切り。
+const breaks=new Set([2,4,7,9,12,15,17]); // この文indexの前で改段
+let html="", para=[];
+SENT.forEach((s,i)=>{
+  if(breaks.has(i) && para.length){ html+="<p>"+para.join("")+"</p>"; para=[]; }
+  para.push(`<span class="s" data-d="${s[0]}" data-len="${s[1].length}">${s[1]}</span>`);
+});
+if(para.length) html+="<p>"+para.join("")+"</p>";
+art.innerHTML=html;
+
+const spans=[...art.querySelectorAll(".s")];
+const dial=document.getElementById("dial"), pval=document.getElementById("pval"),
+      tier=document.getElementById("tier"), count=document.getElementById("count");
+
+function render(){
+  const v=parseFloat(dial.value);
+  let shown=0;
+  spans.forEach(sp=>{
+    const d=parseFloat(sp.dataset.d);
+    const on = d<=v+1e-9;
+    sp.classList.toggle("hidden", !on);
+    if(on) shown+=parseInt(sp.dataset.len,10);
+  });
+  pval.textContent=f2(v);
+  tier.textContent=tierOf(v);
+  count.textContent=`約 ${shown} 字 / 全 ${TOTAL} 字`;
+}
+dial.addEventListener("input",render);
+render();
+</script>
+</body>
+</html>
